@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Typing Garden</title>
+
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Quicksand (Clean, rounded, Reggio-friendly) -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons (Nature themed icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Reggio Theme Customizations */
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f5f5f0; /* Stone/Cream background */
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e6e6e0' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Smooth cursor animation */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+        }
+        
+        /* Shake animation for error */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .animate-shake {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* Prevent text selection during game */
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Focus outline style */
+        button:focus-visible {
+            outline: 2px solid #059669;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="text-stone-700 h-screen w-screen overflow-hidden flex flex-col">
+
+    <div id="root" class="h-full w-full"></div>
+
+    <script type="text/babel">
+
+        // ==========================================
+        // TEACHER SETTINGS AREA
+        // Edit these variables to adjust the game!
+        // ==========================================
+        const TEACHER_SETTINGS = {
+            // How many typing mistakes are allowed before a "Heart" is lost?
+            // If set to 0, mistakes don't remove hearts (easier mode).
+            MISTAKES_PER_HEART: 5, 
+
+            // Maximum hearts (lives) a student starts with
+            STARTING_HEARTS: 3,
+
+            // Text passages for the students to type. 
+            // You can add as many as you want.
+            LEVELS: [
+                {
+                    title: "The Seed",
+                    text: "A tiny seed sleeps in the warm soil. It waits for the rain to fall and the sun to shine. Soon, a green shoot will poke its head out."
+                },
+                {
+                    title: "The Garden",
+                    text: "Bees buzz around the bright flowers. They are busy collecting nectar to make sweet honey. The garden is full of life and color."
+                },
+                {
+                    title: "The Forest",
+                    text: "Tall trees reach up to the blue sky. Their leaves whisper in the wind. Birds build nests in the branches and sing happy songs."
+                },
+                {
+                    title: "Rainy Day",
+                    text: "Pitter patter goes the rain on the window. The plants drink the water and grow strong. After the rain stops, we might see a rainbow."
+                },
+                {
+                    title: "Seasons",
+                    text: "Spring brings new flowers. Summer is hot and sunny. Autumn turns leaves red and gold. Winter covers the world in a soft white blanket."
+                }
+            ],
+
+            // The content of the "About" button
+            ABOUT_TEXT: "Welcome to Typing Garden! This app is designed to help you practice typing while growing your own virtual garden. Focus on accuracy and rhythm. Created for our 4th Grade Class.",
+            
+            // Teacher Name or Class Name
+            CLASS_NAME: "Mr. Fugitt's Class"
+        };
+        // ==========================================
+        // END TEACHER SETTINGS
+        // ==========================================
+
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- Utility Components ---
+
+        const Icon = ({ name, size = 24, className = "" }) => {
+            return <i className={`ph-fill ph-${name} text-[${size}px] ${className}`}></i>;
+        };
+
+        const Button = React.forwardRef(({ onClick, children, variant = "primary", className = "", autoFocus = false }, ref) => {
+            const baseStyle = "px-6 py-3 rounded-2xl font-semibold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-sm";
+            const variants = {
+                primary: "bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-md",
+                secondary: "bg-stone-200 text-stone-700 hover:bg-stone-300",
+                danger: "bg-rose-100 text-rose-600 hover:bg-rose-200",
+                ghost: "bg-transparent text-stone-500 hover:bg-stone-100"
+            };
+            return (
+                <button 
+                    ref={ref}
+                    onClick={onClick} 
+                    className={`${baseStyle} ${variants[variant]} ${className}`}
+                    autoFocus={autoFocus}
+                >
+                    {children}
+                </button>
+            );
+        });
+
+        const Modal = ({ title, onClose, children }) => (
+            <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="glass-panel bg-white rounded-3xl p-8 max-w-lg w-full relative animate-fade-in">
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors">
+                        <i className="ph ph-x text-xl"></i>
+                    </button>
+                    <h2 className="text-2xl font-bold text-emerald-800 mb-4">{title}</h2>
+                    <div className="text-stone-600 leading-relaxed">
+                        {children}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ProgressBar = ({ current, total }) => (
+            <div className="w-full bg-stone-200/50 rounded-full h-2 mb-6 overflow-hidden">
+                <div 
+                    className="bg-emerald-400 h-full transition-all duration-300 ease-out rounded-full"
+                    style={{ width: `${Math.min(100, (current / total) * 100)}%` }}
+                />
+            </div>
+        );
+
+        // Defined outside App to prevent re-creation
+        const RenderedText = ({ targetText, inputText, isError }) => {
+            return (
+                <div className="font-mono text-2xl md:text-3xl leading-relaxed tracking-wide text-stone-400 break-words whitespace-pre-wrap">
+                    {targetText.split('').map((char, index) => {
+                        let colorClass = "text-stone-300/60"; // Pending
+                        let cursorClass = "";
+
+                        if (index < inputText.length) {
+                            // Completed text (always correct now)
+                            colorClass = "text-emerald-700 font-medium"; 
+                        } else if (index === inputText.length) {
+                            // Current cursor character
+                            colorClass = isError 
+                                ? "text-rose-500 bg-rose-100/50 rounded transition-colors duration-100" 
+                                : "text-stone-800 underline decoration-emerald-500 decoration-2 underline-offset-4";
+                            
+                            // Cursor bar
+                            cursorClass = isError 
+                                ? "border-l-2 border-rose-500 ml-[-2px]" 
+                                : "cursor-blink border-l-2 border-emerald-500 ml-[-2px]"; 
+                        }
+
+                        return (
+                            <span key={index} className={`${colorClass} ${cursorClass}`}>
+                                {char}
+                            </span>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+
+        function App() {
+            // -- State --
+            const [view, setView] = useState('home'); // home, game, garden, settings
+            const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+            
+            // Game State
+            const [inputText, setInputText] = useState("");
+            const [gameState, setGameState] = useState("ready"); // ready, playing, paused, finished
+            const [stats, setStats] = useState({ wpm: 0, accuracy: 100, mistakes: 0, hearts: TEACHER_SETTINGS.STARTING_HEARTS });
+            const [startTime, setStartTime] = useState(null);
+            const [isError, setIsError] = useState(false);
+            
+            // Refs
+            const nextLevelBtnRef = useRef(null);
+
+            // Persistence
+            const [userData, setUserData] = useState(() => {
+                const saved = localStorage.getItem('typingGardenData');
+                return saved ? JSON.parse(saved) : { 
+                    unlockedBadges: [], 
+                    levelsCompleted: 0, 
+                    totalWordsTyped: 0,
+                    gardenPlants: [] // Array of unlocked plant IDs
+                };
+            });
+
+            // -- Effects --
+            useEffect(() => {
+                localStorage.setItem('typingGardenData', JSON.stringify(userData));
+            }, [userData]);
+
+            // Focus next level button when game finishes
+            useEffect(() => {
+                if (gameState === 'finished' && nextLevelBtnRef.current) {
+                    setTimeout(() => nextLevelBtnRef.current.focus(), 100);
+                }
+            }, [gameState]);
+
+            // -- Game Logic --
+            const levelDataIndex = currentLevelIndex % TEACHER_SETTINGS.LEVELS.length;
+            const currentLevelData = TEACHER_SETTINGS.LEVELS[levelDataIndex];
+            const targetText = currentLevelData.text;
+            const isPracticeMode = currentLevelIndex >= TEACHER_SETTINGS.LEVELS.length;
+
+            const handleKeyDown = (e) => {
+                if (view !== 'game' || gameState === 'finished' || gameState === 'paused') return;
+                
+                // Prevent scrolling with Space
+                if (e.key === ' ' && e.target === document.body) {
+                    e.preventDefault(); 
+                }
+
+                // Ignore non-character keys (shift, ctrl, etc)
+                if (e.key.length > 1) return;
+
+                if (gameState === 'ready') {
+                    setGameState('playing');
+                    setStartTime(Date.now());
+                }
+
+                const nextChar = e.key;
+                const currentIndex = inputText.length;
+
+                // Guard against typing past end
+                if (currentIndex >= targetText.length) return;
+
+                const expectedChar = targetText[currentIndex];
+
+                if (nextChar === expectedChar) {
+                    // Correct Input
+                    const nextInput = inputText + nextChar;
+                    setInputText(nextInput);
+                    setIsError(false);
+
+                    // Check for completion
+                    // We can use direct length comparison here because we block incorrect input
+                    if (nextInput.length === targetText.length) {
+                        finishLevel();
+                    }
+                } else {
+                    // Incorrect Input - Block progress but count mistake
+                    setStats(prev => {
+                        const newMistakes = prev.mistakes + 1;
+                        let newHearts = prev.hearts;
+                        
+                        // Heart logic
+                        if (TEACHER_SETTINGS.MISTAKES_PER_HEART > 0 && newMistakes % TEACHER_SETTINGS.MISTAKES_PER_HEART === 0) {
+                            newHearts = Math.max(0, prev.hearts - 1);
+                        }
+                        
+                        return { ...prev, mistakes: newMistakes, hearts: newHearts };
+                    });
+                    
+                    // Visual feedback
+                    setIsError(true);
+                    setTimeout(() => setIsError(false), 200);
+                }
+            };
+
+            // Attach/Detach event listener
+            useEffect(() => {
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [inputText, gameState, view, currentLevelIndex]); // Added currentLevelIndex to dependencies
+
+            // Timer for WPM
+            useEffect(() => {
+                let interval;
+                if (gameState === 'playing') {
+                    interval = setInterval(() => {
+                        const now = Date.now();
+                        const minutes = (now - startTime) / 60000;
+                        const words = inputText.length / 5;
+                        const wpm = Math.round(words / minutes) || 0;
+                        
+                        setStats(prev => ({ ...prev, wpm }));
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [gameState, startTime, inputText]);
+
+
+            const finishLevel = () => {
+                setGameState('finished');
+                
+                // Calculate Final Stats
+                const accuracy = Math.max(0, Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100));
+                
+                // Update persistent data
+                setUserData(prev => {
+                    const newPlants = [...prev.gardenPlants];
+                    newPlants.push(currentLevelIndex);
+
+                    return {
+                        ...prev,
+                        levelsCompleted: prev.levelsCompleted + 1,
+                        totalWordsTyped: prev.totalWordsTyped + (targetText.split(' ').length),
+                        gardenPlants: newPlants
+                    };
+                });
+            };
+
+            const resetLevel = () => {
+                setInputText("");
+                setStats({ wpm: 0, accuracy: 100, mistakes: 0, hearts: TEACHER_SETTINGS.STARTING_HEARTS });
+                setGameState("ready");
+                setStartTime(null);
+                setIsError(false);
+            };
+            
+            const nextLevel = () => {
+                setCurrentLevelIndex(prev => prev + 1);
+                resetLevel();
+            };
+
+            const resetAllProgress = () => {
+                if(confirm("Are you sure you want to reset all garden progress? This cannot be undone.")) {
+                    const cleanState = { 
+                        unlockedBadges: [], 
+                        levelsCompleted: 0, 
+                        totalWordsTyped: 0,
+                        gardenPlants: []
+                    };
+                    setUserData(cleanState);
+                    localStorage.setItem('typingGardenData', JSON.stringify(cleanState));
+                    setView('home');
+                    setCurrentLevelIndex(0);
+                    resetLevel();
+                }
+            };
+
+            // -- Components for Views --
+
+            const HomeView = () => (
+                <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
+                    <div className="glass-panel p-12 rounded-[2rem] text-center max-w-2xl w-full">
+                        <div className="mb-6 inline-flex p-4 bg-emerald-100 rounded-full text-emerald-600">
+                            <i className="ph-fill ph-plant text-6xl"></i>
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-bold text-emerald-900 mb-2">Typing Garden</h1>
+                        <p className="text-stone-500 text-lg mb-8">{TEACHER_SETTINGS.CLASS_NAME}</p>
+                        
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <Button onClick={() => setView('game')} className="w-full sm:w-auto justify-center">
+                                <i className="ph-bold ph-play"></i> Start Typing
+                            </Button>
+                            <Button variant="secondary" onClick={() => setView('garden')} className="w-full sm:w-auto justify-center">
+                                <i className="ph-bold ph-flower"></i> My Garden
+                            </Button>
+                        </div>
+
+                        <div className="mt-8 flex justify-center gap-4">
+                            <button onClick={() => setView('about')} className="text-stone-400 hover:text-emerald-600 text-sm font-medium flex items-center gap-1 transition-colors">
+                                <i className="ph-bold ph-info"></i> About
+                            </button>
+                            <button onClick={() => setView('settings')} className="text-stone-400 hover:text-stone-600 text-sm font-medium flex items-center gap-1 transition-colors">
+                                <i className="ph-bold ph-gear"></i> Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const GameView = () => (
+                <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-4 md:p-8">
+                    {/* Header Stats */}
+                    <div className="flex justify-between items-center mb-6 glass-panel p-4 rounded-2xl">
+                        <Button variant="ghost" onClick={() => setView('home')} className="!p-2">
+                            <i className="ph-bold ph-arrow-left text-xl"></i> Back
+                        </Button>
+                        
+                        <div className="flex gap-6 md:gap-12 text-center">
+                            <div>
+                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Speed</div>
+                                <div className="text-2xl font-bold text-emerald-700">{stats.wpm} <span className="text-sm font-normal text-stone-500">wpm</span></div>
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Accuracy</div>
+                                <div className="text-2xl font-bold text-emerald-700">{Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100) || 100}%</div>
+                            </div>
+                            <div className="hidden sm:block">
+                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Hearts</div>
+                                <div className="flex gap-1 mt-1 text-rose-500 text-xl">
+                                    {[...Array(TEACHER_SETTINGS.STARTING_HEARTS)].map((_, i) => (
+                                        <i key={i} className={`ph-fill ${i < stats.hearts ? 'ph-heart' : 'ph-heart-break text-stone-300'}`}></i>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="w-10"></div> {/* Spacer for balance */}
+                    </div>
+
+                    {/* Main Typing Area */}
+                    <div className="flex-1 flex flex-col justify-center relative">
+                        <div className={`glass-panel p-8 md:p-12 rounded-3xl shadow-lg relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-transform ${isError ? 'animate-shake' : ''}`}>
+                            
+                            {/* Decorative plant elements */}
+                            <i className="ph-fill ph-plant absolute -bottom-4 -left-4 text-emerald-100/50 text-[180px] -z-10 rotate-12"></i>
+                            <i className="ph-fill ph-flower-tulip absolute top-4 right-4 text-amber-100/50 text-[120px] -z-10 -rotate-12"></i>
+
+                            <div className="mb-6">
+                                <div className="flex justify-between items-end border-b-2 border-stone-100 pb-2 mb-2">
+                                    <div className="flex flex-col">
+                                        <h3 className="text-lg font-bold text-stone-500 uppercase tracking-widest">{currentLevelData.title}</h3>
+                                        {isPracticeMode && <span className="text-xs text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded-full w-fit mt-1">Practice Mode</span>}
+                                    </div>
+                                    <div className="text-sm text-stone-400">Level {currentLevelIndex + 1}</div>
+                                </div>
+                                <ProgressBar current={inputText.length} total={targetText.length} />
+                            </div>
+
+                            <div className="relative no-select" onClick={() => { document.body.focus() }}>
+                                <RenderedText targetText={targetText} inputText={inputText} isError={isError} />
+                            </div>
+                        </div>
+
+                        {/* Overlays - Positioned OUTSIDE the typing box to ensure visibility */}
+                        {stats.hearts === 0 && (
+                            <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+                                <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center animate-fade-in border border-rose-100 max-w-md w-full text-center">
+                                    <i className="ph-fill ph-heart-break text-6xl text-rose-400 mb-4"></i>
+                                    <h2 className="text-3xl font-bold text-stone-700 mb-2">Needs more care</h2>
+                                    <p className="text-stone-500 mb-6">Too many mistakes. Let's try growing this again.</p>
+                                    <Button onClick={resetLevel} className="w-full justify-center">Try Again</Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'finished' && (
+                            <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+                                <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center animate-fade-in border border-emerald-100 max-w-lg w-full text-center">
+                                    <i className="ph-fill ph-star text-6xl text-amber-400 mb-4 animate-bounce"></i>
+                                    <h2 className="text-3xl font-bold text-emerald-800 mb-2">Beautiful!</h2>
+                                    <p className="text-stone-500 mb-6 text-lg">You grew a new plant for your garden.</p>
+                                    
+                                    <div className="flex gap-8 mb-8">
+                                        <div className="text-center">
+                                            <div className="text-sm text-stone-400 uppercase">WPM</div>
+                                            <div className="text-3xl font-bold text-stone-700">{stats.wpm}</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-sm text-stone-400 uppercase">Accuracy</div>
+                                            <div className="text-3xl font-bold text-stone-700">{Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100)}%</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4 w-full">
+                                        <Button variant="secondary" onClick={() => setView('garden')} className="flex-1 justify-center">Visit Garden</Button>
+                                        <Button 
+                                            ref={nextLevelBtnRef}
+                                            onClick={nextLevel} 
+                                            className="flex-1 justify-center"
+                                            autoFocus={true}
+                                        >
+                                            Next Level <i className="ph-bold ph-arrow-right"></i>
+                                        </Button>
+                                    </div>
+                                    {isPracticeMode && <p className="mt-4 text-xs text-stone-400">Practice Mode: Repeating levels</p>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Instructions footer */}
+                    <div className="mt-6 text-center text-stone-400 text-sm">
+                        Keep your fingers on the home row. Breathe and focus.
+                    </div>
+                </div>
+            );
+
+            // Plant Icon Mapping
+            const PLANT_ICONS = ["ph-flower", "ph-plant", "ph-tree", "ph-leaf", "ph-flower-lotus", "ph-cactus", "ph-potted-plant", "ph-clover"];
+            const PLANT_NAMES = ["Daisy", "Sprout", "Oak Sapling", "Fern", "Lotus", "Cactus", "Basil", "Lucky Clover"];
+
+            const GardenView = () => (
+                <div className="h-full flex flex-col p-6 max-w-6xl mx-auto w-full">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-3xl font-bold text-emerald-800">My Garden</h2>
+                        <Button variant="secondary" onClick={() => setView('home')}>Back Home</Button>
+                    </div>
+
+                    <div className="flex-1 glass-panel rounded-3xl p-8 relative overflow-hidden bg-gradient-to-b from-blue-50/50 to-emerald-50/50 border-2 border-stone-100 overflow-y-auto">
+                        {/* Sky/Sun decoration */}
+                        <div className="absolute top-8 right-8 w-24 h-24 bg-amber-200 rounded-full blur-2xl opacity-60"></div>
+
+                        {userData.gardenPlants.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
+                                <i className="ph-duotone ph-shovel text-6xl text-stone-300 mb-4"></i>
+                                <p className="text-xl text-stone-500">Your garden is empty.</p>
+                                <p className="text-stone-400">Complete levels to plant seeds!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 pb-12">
+                                {userData.gardenPlants.map((plantId, index) => {
+                                    // Use modulo to cycle through available icons if user does many levels
+                                    const iconIndex = plantId % PLANT_ICONS.length;
+                                    const icon = PLANT_ICONS[iconIndex];
+                                    const name = PLANT_NAMES[iconIndex];
+
+                                    return (
+                                        <div key={index} className="flex flex-col items-center gap-2 animate-pop-in group cursor-help">
+                                            <div className="w-24 h-24 bg-white/60 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-300 border border-white relative z-10">
+                                                <i className={`ph-fill ${icon} text-5xl text-emerald-600 drop-shadow-sm`}></i>
+                                            </div>
+                                            <span className="text-sm font-semibold text-stone-600 bg-white/80 px-3 py-1 rounded-full relative z-10 shadow-sm">{name}</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        {/* Ground decoration - Fixed to bottom of container */}
+                        <div className="fixed bottom-0 left-0 right-0 h-12 bg-emerald-100/50 border-t border-emerald-200/50 pointer-events-none"></div>
+                    </div>
+                </div>
+            );
+
+            // -- Modals --
+
+            const SettingsModal = () => (
+                <Modal title="Settings" onClose={() => setView('home')}>
+                    <div className="space-y-6">
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                            <h4 className="font-bold text-rose-700 mb-2 flex items-center gap-2">
+                                <i className="ph-bold ph-warning"></i> Reset Progress
+                            </h4>
+                            <p className="text-sm text-stone-600 mb-4">
+                                This will erase all badges, garden plants, and stats. This cannot be undone.
+                            </p>
+                            <Button variant="danger" onClick={resetAllProgress} className="w-full justify-center text-sm">
+                                Erase All Data
+                            </Button>
+                        </div>
+                        <div className="text-xs text-stone-400 text-center">
+                            Version 2.0 (Reggio Edition)
+                        </div>
+                    </div>
+                </Modal>
+            );
+
+            const AboutModal = () => (
+                <Modal title="About" onClose={() => setView('home')}>
+                    <p className="mb-4">{TEACHER_SETTINGS.ABOUT_TEXT}</p>
+                    <div className="bg-emerald-50 p-4 rounded-xl">
+                        <h4 className="font-bold text-emerald-800 text-sm mb-2">How to Play:</h4>
+                        <ul className="text-sm space-y-2 list-disc list-inside">
+                            <li>Type the highlighted letters exactly as shown.</li>
+                            <li>Don't look at your hands! Try to feel the keys.</li>
+                            <li>Accuracy is more important than speed.</li>
+                            <li>Complete levels to unlock new plants for your garden.</li>
+                        </ul>
+                    </div>
+                </Modal>
+            );
+
+            // -- Render Logic --
+            return (
+                <div className="h-full w-full">
+                    {view === 'home' && <HomeView />}
+                    {view === 'game' && <GameView />}
+                    {view === 'garden' && <GardenView />}
+                    {view === 'settings' && <SettingsModal />}
+                    {view === 'about' && <AboutModal />}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+    </script>
+
+    <!-- Global Styles for Animations -->
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5); }
+            70% { transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-pop-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</body>
+</html>
