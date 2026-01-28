@@ -91,7 +91,7 @@
         // TEACHER SETTINGS
         // ==========================================
         const TEACHER_SETTINGS = {
-            MISTAKES_PER_HEART: 5, 
+            MISTAKES_PER_HEART: 3, 
             STARTING_HEARTS: 3,
             LEVELS: [
                 { title: "Sunflowers", text: "Tall sunflowers turn their bright yellow heads to follow the sun across the blue sky." },
@@ -318,7 +318,7 @@
 
         // --- View Components ---
 
-        const HomeView = ({ setView }) => (
+        const HomeView = ({ setView, startGame }) => (
             <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
                 <div className="glass-panel p-12 rounded-[2rem] text-center max-w-2xl w-full">
                     <div className="mb-6 inline-flex p-4 bg-emerald-100 rounded-full text-emerald-600">
@@ -328,7 +328,7 @@
                     <p className="text-stone-500 text-lg mb-8">{TEACHER_SETTINGS.CLASS_NAME}</p>
                     
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button onClick={() => setView('game')} className="w-full sm:w-auto justify-center">
+                        <Button onClick={startGame} className="w-full sm:w-auto justify-center">
                             <i className="ph-bold ph-play"></i> Start Typing
                         </Button>
                         <Button variant="secondary" onClick={() => setView('garden')} className="w-full sm:w-auto justify-center">
@@ -471,9 +471,9 @@
         };
 
         const PLANT_ICONS = ["ph-flower", "ph-plant", "ph-tree", "ph-leaf", "ph-flower-lotus", "ph-cactus", "ph-potted-plant", "ph-clover"];
-        const PLANT_NAMES = ["Daisy", "Sprout", "Oak Sapling", "Fern", "Lotus", "Cactus", "Basil", "Lucky Clover"];
-
-        const GardenView = ({ userData, setView }) => (
+        
+        // Removed fixed names, now we use the Level Title
+        const GardenView = ({ userData, setView, replayLevel }) => (
             <div className="h-full flex flex-col p-6 max-w-6xl mx-auto w-full">
                 <div className="flex justify-between items-center mb-8">
                     <h2 className="text-3xl font-bold text-emerald-800">My Garden</h2>
@@ -491,17 +491,33 @@
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 pb-12">
-                            {userData.gardenPlants.map((plantId, index) => {
-                                const iconIndex = plantId % PLANT_ICONS.length;
+                            {userData.gardenPlants.map((plant, index) => {
+                                // plant is now an object: { id, title, wpm, accuracy }
+                                const iconIndex = plant.id % PLANT_ICONS.length;
                                 const icon = PLANT_ICONS[iconIndex];
-                                const name = PLANT_NAMES[iconIndex];
 
                                 return (
-                                    <div key={index} className="flex flex-col items-center gap-2 animate-pop-in group cursor-help">
-                                        <div className="w-24 h-24 bg-white/60 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-300 border border-white relative z-10">
+                                    <div 
+                                        key={index} 
+                                        className="flex flex-col items-center gap-2 animate-pop-in group cursor-pointer relative"
+                                        onClick={() => replayLevel(plant.id)}
+                                        title={`Replay "${plant.title}"`}
+                                    >
+                                        <div className="w-24 h-24 bg-white/60 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-300 border border-white relative z-10 group-hover:shadow-md">
                                             <i className={`ph-fill ${icon} text-5xl text-emerald-600 drop-shadow-sm`}></i>
+                                            {/* Hover Play Icon */}
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-full">
+                                                <i className="ph-fill ph-play text-white text-3xl"></i>
+                                            </div>
                                         </div>
-                                        <span className="text-sm font-semibold text-stone-600 bg-white/80 px-3 py-1 rounded-full relative z-10 shadow-sm">{name}</span>
+                                        <div className="text-center z-10">
+                                            <div className="text-sm font-bold text-stone-700 leading-tight mb-1">{plant.title}</div>
+                                            <div className="flex gap-2 justify-center text-[10px] text-stone-500 font-mono bg-white/50 rounded-full px-2 py-0.5">
+                                                <span>{plant.wpm}wpm</span>
+                                                <span className="text-stone-300">|</span>
+                                                <span>{plant.accuracy}%</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 )
                             })}
@@ -527,7 +543,7 @@
                         </Button>
                     </div>
                     <div className="text-xs text-stone-400 text-center">
-                        Version 2.0 (Reggio Edition)
+                        Version 2.1 (Random & Replay)
                     </div>
                 </div>
             </Modal>
@@ -567,11 +583,22 @@
 
             const [userData, setUserData] = useState(() => {
                 const saved = localStorage.getItem('typingGardenData');
-                return saved ? JSON.parse(saved) : { 
+                let parsed;
+                try {
+                    parsed = saved ? JSON.parse(saved) : null;
+                    // Migration check: If gardenPlants contains numbers (old format), reset to avoid crash
+                    if (parsed && parsed.gardenPlants && parsed.gardenPlants.length > 0 && typeof parsed.gardenPlants[0] === 'number') {
+                        parsed = null; // Force reset
+                    }
+                } catch (e) {
+                    parsed = null;
+                }
+
+                return parsed || { 
                     unlockedBadges: [], 
                     levelsCompleted: 0, 
                     totalWordsTyped: 0,
-                    gardenPlants: []
+                    gardenPlants: [] // Now Array of Objects {id, title, wpm, accuracy}
                 };
             });
 
@@ -661,13 +688,44 @@
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [gameState, startTime]); // Removed inputText from dependency array
+            }, [gameState, startTime]); 
 
             const finishLevel = () => {
                 setGameState('finished');
+                
+                // Calculate Final Stats
+                const finalAccuracy = Math.max(0, Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100));
+                
+                // Need to calculate final WPM here to ensure it's accurate at finish
+                const now = Date.now();
+                const minutes = (now - startTime) / 60000;
+                const words = targetText.length / 5;
+                const finalWpm = Math.round(words / minutes) || 0;
+                
+                // Update final stats for display
+                setStats(prev => ({ ...prev, wpm: finalWpm, accuracy: finalAccuracy }));
+
                 setUserData(prev => {
                     const newPlants = [...prev.gardenPlants];
-                    newPlants.push(currentLevelIndex);
+                    
+                    // Check if this level already exists in the garden
+                    const existingIndex = newPlants.findIndex(p => p.id === currentLevelIndex);
+                    
+                    const newPlantEntry = {
+                        id: currentLevelIndex,
+                        title: currentLevelData.title,
+                        wpm: finalWpm,
+                        accuracy: finalAccuracy
+                    };
+
+                    if (existingIndex >= 0) {
+                        // Update existing plant only if WPM is better (or just update to latest? User asked to "update score", usually implies latest or best. Let's do latest to reflect current skill)
+                        newPlants[existingIndex] = newPlantEntry;
+                    } else {
+                        // Add new plant
+                        newPlants.push(newPlantEntry);
+                    }
+
                     return {
                         ...prev,
                         levelsCompleted: prev.levelsCompleted + 1,
@@ -690,6 +748,21 @@
                 resetLevel();
             };
 
+            // New function to start a random game
+            const startRandomGame = () => {
+                const randomIdx = Math.floor(Math.random() * TEACHER_SETTINGS.LEVELS.length);
+                setCurrentLevelIndex(randomIdx);
+                resetLevel();
+                setView('game');
+            };
+
+            // New function to replay from garden
+            const replayLevel = (levelId) => {
+                setCurrentLevelIndex(levelId);
+                resetLevel();
+                setView('game');
+            };
+
             const resetAllProgress = () => {
                 if(confirm("Are you sure you want to reset all garden progress? This cannot be undone.")) {
                     const cleanState = { 
@@ -708,7 +781,7 @@
 
             return (
                 <div className="h-full w-full">
-                    {view === 'home' && <HomeView setView={setView} />}
+                    {view === 'home' && <HomeView setView={setView} startGame={startRandomGame} />}
                     
                     {view === 'game' && (
                         <GameView 
@@ -727,7 +800,7 @@
                         />
                     )}
 
-                    {view === 'garden' && <GardenView userData={userData} setView={setView} />}
+                    {view === 'garden' && <GardenView userData={userData} setView={setView} replayLevel={replayLevel} />}
                     
                     {view === 'settings' && <SettingsModal setView={setView} resetAllProgress={resetAllProgress} />}
                     
