@@ -91,7 +91,7 @@
         // TEACHER SETTINGS
         // ==========================================
         const TEACHER_SETTINGS = {
-            MISTAKES_PER_HEART: 3, 
+            MISTAKES_PER_HEART: 5, 
             STARTING_HEARTS: 3,
             LEVELS: [
                 { title: "Sunflowers", text: "Tall sunflowers turn their bright yellow heads to follow the sun across the blue sky." },
@@ -316,7 +316,7 @@
             );
         };
 
-        // --- View Components (Defined Outside App) ---
+        // --- View Components ---
 
         const HomeView = ({ setView }) => (
             <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
@@ -561,6 +561,9 @@
             const [isError, setIsError] = useState(false);
             
             const nextLevelBtnRef = useRef(null);
+            
+            // New Ref to track input text independently of the timer interval
+            const inputTextRef = useRef("");
 
             const [userData, setUserData] = useState(() => {
                 const saved = localStorage.getItem('typingGardenData');
@@ -575,6 +578,11 @@
             useEffect(() => {
                 localStorage.setItem('typingGardenData', JSON.stringify(userData));
             }, [userData]);
+
+            // Sync the ref with the state whenever inputText changes
+            useEffect(() => {
+                inputTextRef.current = inputText;
+            }, [inputText]);
 
             useEffect(() => {
                 if (gameState === 'finished' && nextLevelBtnRef.current) {
@@ -638,19 +646,22 @@
                 return () => window.removeEventListener('keydown', handleKeyDown);
             }, [inputText, gameState, view, currentLevelIndex]);
 
+            // UPDATED: Timer Effect now uses Ref and is independent of inputText state
             useEffect(() => {
                 let interval;
-                if (gameState === 'playing') {
+                if (gameState === 'playing' && startTime) {
                     interval = setInterval(() => {
                         const now = Date.now();
                         const minutes = (now - startTime) / 60000;
-                        const words = inputText.length / 5;
+                        // Access current length from Ref instead of State to avoid dependency loop or stale closure
+                        const words = inputTextRef.current.length / 5;
                         const wpm = Math.round(words / minutes) || 0;
+                        
                         setStats(prev => ({ ...prev, wpm }));
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [gameState, startTime, inputText]);
+            }, [gameState, startTime]); // Removed inputText from dependency array
 
             const finishLevel = () => {
                 setGameState('finished');
