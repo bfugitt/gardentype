@@ -15,17 +15,17 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts: Quicksand (Clean, rounded, Reggio-friendly) -->
+    <!-- Google Fonts: Quicksand -->
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Phosphor Icons (Nature themed icons) -->
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
         /* Reggio Theme Customizations */
         body {
             font-family: 'Quicksand', sans-serif;
-            background-color: #f5f5f0; /* Stone/Cream background */
+            background-color: #f5f5f0;
             background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e6e6e0' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
         
@@ -55,16 +55,29 @@
             animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* Prevent text selection during game */
         .no-select {
             user-select: none;
             -webkit-user-select: none;
         }
 
-        /* Focus outline style */
         button:focus-visible {
             outline: 2px solid #059669;
             outline-offset: 2px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.2); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.4); 
         }
     </style>
 </head>
@@ -75,139 +88,45 @@
     <script type="text/babel">
 
         // ==========================================
-        // TEACHER SETTINGS AREA
-        // Edit these variables to adjust the game!
+        // TEACHER SETTINGS
         // ==========================================
         const TEACHER_SETTINGS = {
-            // How many typing mistakes are allowed before a "Heart" is lost?
-            // If set to 0, mistakes don't remove hearts (easier mode).
             MISTAKES_PER_HEART: 3, 
-
-            // Maximum hearts (lives) a student starts with
             STARTING_HEARTS: 3,
-
-            // Text passages for the students to type. 
-            // You can add as many as you want.
-LEVELS: [
-                {
-                    title: "Sunflowers",
-                    text: "Tall sunflowers turn their bright yellow heads to follow the sun across the blue sky."
-                },
-                {
-                    title: "The River",
-                    text: "Cool water flows over smooth stones in the quiet river, making a gentle splashing sound."
-                },
-                {
-                    title: "Mountains",
-                    text: "Snow covers the high peaks of the mountains, while green pine trees grow in the valleys below."
-                },
-                {
-                    title: "Butterflies",
-                    text: "An orange butterfly rests on a purple flower, opening and closing its delicate wings."
-                },
-                {
-                    title: "Night Sky",
-                    text: "When the sun goes down, thousands of tiny stars twinkle like diamonds in the dark night sky."
-                },
-                {
-                    title: "Ocean Waves",
-                    text: "The salty ocean waves crash against the sandy shore, leaving behind seashells and smooth glass."
-                },
-                {
-                    title: "Autumn",
-                    text: "In October, the maple leaves turn bright red and orange before crunching under our feet."
-                },
-                {
-                    title: "First Snow",
-                    text: "The world becomes quiet and white as soft snowflakes fall gently from the gray clouds."
-                },
-                {
-                    title: "Rainforest",
-                    text: "Monkeys swing from vines in the thick green rainforest, calling out to each other loudly."
-                },
-                {
-                    title: "Desert Life",
-                    text: "A cactus can live for a long time without water, standing tall in the hot desert sand."
-                },
-                {
-                    title: "Morning Dew",
-                    text: "Early in the morning, tiny drops of water sparkle on the spider webs like strings of pearls."
-                },
-                {
-                    title: "The Owl",
-                    text: "The wise old owl sits high in the oak tree, watching the forest floor with big yellow eyes."
-                },
-                {
-                    title: "Busy Ants",
-                    text: "A line of tiny ants works together to carry a crumb of bread back to their underground home."
-                },
-                {
-                    title: "Gentle Wind",
-                    text: "A soft breeze blows through the tall grass, making it dance and sway in the afternoon light."
-                },
-                {
-                    title: "Deep Roots",
-                    text: "Under the ground, the roots of the tree spread out wide to drink water and hold the tree steady."
-                },
-                {
-                    title: "Fluffy Clouds",
-                    text: "White clouds float by like cotton balls, changing shapes into dragons and castles as they move."
-                },
-                {
-                    title: "Fireflies",
-                    text: "On warm summer nights, fireflies blink their yellow lights in the backyard to find their friends."
-                },
-                {
-                    title: "Mushrooms",
-                    text: "After the rain, small red mushrooms pop up from the damp earth under the shade of the ferns."
-                },
-                {
-                    title: "Coral Reef",
-                    text: "Colorful fish swim quickly through the coral reef, hiding from bigger fish in the safety of the rocks."
-                },
-                {
-                    title: "Pine Forest",
-                    text: "The air smells fresh and sharp in the pine forest, where needles cover the ground like a soft carpet."
-                },
-                {
-                    title: "The Moon",
-                    text: "Sometimes the moon looks like a thin smile, and other times it is a big, bright, round circle."
-                },
-                {
-                    title: "Spring Robins",
-                    text: "The red robin hops across the green lawn, looking for a worm to bring back to the nest."
-                },
-                {
-                    title: "River Stones",
-                    text: "Over many years, the rushing water turns rough rocks into smooth, round pebbles of gray and blue."
-                },
-                {
-                    title: "Morning Fog",
-                    text: "A thick gray fog hugs the ground, hiding the trees and houses until the sun burns it away."
-                },
-                {
-                    title: "Harvest Time",
-                    text: "Farmers gather ripe pumpkins and crisp apples as the air turns cool and the days grow shorter."
-                }
+            LEVELS: [
+                { title: "Sunflowers", text: "Tall sunflowers turn their bright yellow heads to follow the sun across the blue sky." },
+                { title: "The River", text: "Cool water flows over smooth stones in the quiet river, making a gentle splashing sound." },
+                { title: "Mountains", text: "Snow covers the high peaks of the mountains, while green pine trees grow in the valleys below." },
+                { title: "Butterflies", text: "An orange butterfly rests on a purple flower, opening and closing its delicate wings." },
+                { title: "Night Sky", text: "When the sun goes down, thousands of tiny stars twinkle like diamonds in the dark night sky." },
+                { title: "Ocean Waves", text: "The salty ocean waves crash against the sandy shore, leaving behind seashells and smooth glass." },
+                { title: "Autumn", text: "In October, the maple leaves turn bright red and orange before crunching under our feet." },
+                { title: "First Snow", text: "The world becomes quiet and white as soft snowflakes fall gently from the gray clouds." },
+                { title: "Rainforest", text: "Monkeys swing from vines in the thick green rainforest, calling out to each other loudly." },
+                { title: "Desert Life", text: "A cactus can live for a long time without water, standing tall in the hot desert sand." },
+                { title: "Morning Dew", text: "Early in the morning, tiny drops of water sparkle on the spider webs like strings of pearls." },
+                { title: "The Owl", text: "The wise old owl sits high in the oak tree, watching the forest floor with big yellow eyes." },
+                { title: "Busy Ants", text: "A line of tiny ants works together to carry a crumb of bread back to their underground home." },
+                { title: "Gentle Wind", text: "A soft breeze blows through the tall grass, making it dance and sway in the afternoon light." },
+                { title: "Deep Roots", text: "Under the ground, the roots of the tree spread out wide to drink water and hold the tree steady." },
+                { title: "Fluffy Clouds", text: "White clouds float by like cotton balls, changing shapes into dragons and castles as they move." },
+                { title: "Fireflies", text: "On warm summer nights, fireflies blink their yellow lights in the backyard to find their friends." },
+                { title: "Mushrooms", text: "After the rain, small red mushrooms pop up from the damp earth under the shade of the ferns." },
+                { title: "Coral Reef", text: "Colorful fish swim quickly through the coral reef, hiding from bigger fish in the safety of the rocks." },
+                { title: "Pine Forest", text: "The air smells fresh and sharp in the pine forest, where needles cover the ground like a soft carpet." },
+                { title: "The Moon", text: "Sometimes the moon looks like a thin smile, and other times it is a big, bright, round circle." },
+                { title: "Spring Robins", text: "The red robin hops across the green lawn, looking for a worm to bring back to the nest." },
+                { title: "River Stones", text: "Over many years, the rushing water turns rough rocks into smooth, round pebbles of gray and blue." },
+                { title: "Morning Fog", text: "A thick gray fog hugs the ground, hiding the trees and houses until the sun burns it away." },
+                { title: "Harvest Time", text: "Farmers gather ripe pumpkins and crisp apples as the air turns cool and the days grow shorter." }
             ],
-
-            // The content of the "About" button
             ABOUT_TEXT: "Welcome to Typing Garden! This app is designed to help you practice typing while growing your own virtual garden. Focus on accuracy and rhythm. Created for our 4th Grade Class.",
-            
-            // Teacher Name or Class Name
             CLASS_NAME: "Mr. Fugitt's Class"
         };
-        // ==========================================
-        // END TEACHER SETTINGS
-        // ==========================================
 
         const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- Utility Components ---
-
-        const Icon = ({ name, size = 24, className = "" }) => {
-            return <i className={`ph-fill ph-${name} text-[${size}px] ${className}`}></i>;
-        };
+        // --- Shared Components ---
 
         const Button = React.forwardRef(({ onClick, children, variant = "primary", className = "", autoFocus = false }, ref) => {
             const baseStyle = "px-6 py-3 rounded-2xl font-semibold transition-all duration-200 transform active:scale-95 flex items-center gap-2 shadow-sm";
@@ -252,31 +171,143 @@ LEVELS: [
             </div>
         );
 
-        // Defined outside App to prevent re-creation
+        const KEYBOARD_LAYOUT = [
+            ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "backspace"],
+            ["tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\"],
+            ["caps", "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", "enter"],
+            ["shift", "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", "shift"],
+            ["space"]
+        ];
+
+        const FINGER_MAP = {
+            'rose-400': ['`', '1', 'q', 'a', 'z', 'shift', 'tab', 'caps'], 
+            'orange-400': ['2', 'w', 's', 'x'], 
+            'amber-400': ['3', 'e', 'd', 'c'], 
+            'emerald-400': ['4', '5', 'r', 't', 'f', 'g', 'v', 'b'], 
+            'sky-400': ['6', '7', 'y', 'u', 'h', 'j', 'n', 'm'], 
+            'blue-400': ['8', 'i', 'k', ','], 
+            'indigo-400': ['9', 'o', 'l', '.'], 
+            'violet-400': ['0', '-', '=', 'p', '[', ']', '\\', ';', '\'', 'enter', 'backspace', '/']
+        };
+
+        const getFingerColor = (key) => {
+            if (key === 'space') return 'border-stone-300';
+            for (const [color, keys] of Object.entries(FINGER_MAP)) {
+                if (keys.includes(key.toLowerCase())) return `border-${color}`;
+            }
+            return 'border-stone-300';
+        };
+
+        const getKeyTarget = (char) => {
+            if (!char) return null;
+            const lower = char.toLowerCase();
+            const symbolMap = {
+                '~': '`', '!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0', '_': '-', '+': '=',
+                '{': '[', '}': ']', '|': '\\', ':': ';', '"': "'", '<': ',', '>': '.', '?': '/'
+            };
+            let key = symbolMap[char] || lower;
+            let needsShift = false;
+            if (symbolMap[char] || (char >= 'A' && char <= 'Z')) {
+                needsShift = true;
+            }
+            return { key, needsShift };
+        };
+
+        const VirtualKeyboard = ({ nextChar }) => {
+            const target = getKeyTarget(nextChar);
+            const leftHandKeys = new Set(['`','1','2','3','4','5','q','w','e','r','t','a','s','d','f','g','z','x','c','v','b']);
+            const useRightShift = target && leftHandKeys.has(target.key);
+
+            return (
+                <div className="w-full max-w-4xl mx-auto p-2 md:p-4 glass-panel rounded-2xl mt-4 select-none transform scale-95 md:scale-100 origin-top">
+                    <div className="flex flex-col gap-1.5 md:gap-2">
+                        {KEYBOARD_LAYOUT.map((row, rowIndex) => (
+                            <div key={rowIndex} className="flex justify-center gap-1 md:gap-1.5">
+                                {row.map((key) => {
+                                    let isActive = false;
+                                    if (target) {
+                                        if (key.toLowerCase() === target.key) isActive = true;
+                                        if (key === 'shift' && target.needsShift) {
+                                            if (useRightShift && rowIndex === 3 && row.indexOf(key) > 5) isActive = true;
+                                            if (!useRightShift && rowIndex === 3 && row.indexOf(key) === 0) isActive = true;
+                                        }
+                                        if (key === 'space' && nextChar === ' ') isActive = true;
+                                    }
+                                    let widthClass = "w-8 md:w-12";
+                                    if (key === 'backspace') widthClass = "w-16 md:w-24";
+                                    if (key === 'tab' || key === '\\') widthClass = "w-12 md:w-16";
+                                    if (key === 'caps' || key === 'enter') widthClass = "w-14 md:w-20";
+                                    if (key === 'shift') widthClass = "w-20 md:w-24";
+                                    if (key === 'space') widthClass = "w-64 md:w-80";
+                                    const fingerBorder = getFingerColor(key);
+                                    
+                                    return (
+                                        <div 
+                                            key={key}
+                                            className={`
+                                                h-8 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl text-sm md:text-base font-medium transition-all duration-200 shadow-sm border-b-4
+                                                ${widthClass}
+                                                ${isActive 
+                                                    ? 'bg-emerald-500 text-white border-emerald-700 -translate-y-0.5 shadow-md' 
+                                                    : `bg-white text-stone-600 ${fingerBorder} hover:bg-stone-50`
+                                                }
+                                            `}
+                                        >
+                                            {key === 'shift' ? <i className="ph-bold ph-arrow-fat-up"></i> : 
+                                             key === 'backspace' ? <i className="ph-bold ph-backspace"></i> :
+                                             key === 'enter' ? <i className="ph-bold ph-arrow-turn-down-left"></i> :
+                                             key === 'tab' ? <i className="ph-bold ph-arrows-left-right"></i> :
+                                             key === 'caps' ? <i className="ph-bold ph-caps-lock"></i> :
+                                             key.toUpperCase()}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
         const RenderedText = ({ targetText, inputText, isError }) => {
+            const cursorRef = useRef(null);
+            const prevTopRef = useRef(null);
+
+            useEffect(() => {
+                if (cursorRef.current) {
+                    const currentTop = cursorRef.current.offsetTop;
+                    // Only scroll if line changed
+                    if (prevTopRef.current !== currentTop) {
+                        cursorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        prevTopRef.current = currentTop;
+                    }
+                }
+            }, [inputText.length]);
+
             return (
                 <div className="font-mono text-2xl md:text-3xl leading-relaxed tracking-wide text-stone-400 break-words whitespace-pre-wrap">
                     {targetText.split('').map((char, index) => {
-                        let colorClass = "text-stone-300/60"; // Pending
+                        let colorClass = "text-stone-300/60";
                         let cursorClass = "";
+                        const isCursor = index === inputText.length;
 
                         if (index < inputText.length) {
-                            // Completed text (always correct now)
                             colorClass = "text-emerald-700 font-medium"; 
-                        } else if (index === inputText.length) {
-                            // Current cursor character
+                        } else if (isCursor) {
                             colorClass = isError 
                                 ? "text-rose-500 bg-rose-100/50 rounded transition-colors duration-100" 
                                 : "text-stone-800 underline decoration-emerald-500 decoration-2 underline-offset-4";
-                            
-                            // Cursor bar
                             cursorClass = isError 
                                 ? "border-l-2 border-rose-500 ml-[-2px]" 
                                 : "cursor-blink border-l-2 border-emerald-500 ml-[-2px]"; 
                         }
 
                         return (
-                            <span key={index} className={`${colorClass} ${cursorClass}`}>
+                            <span 
+                                key={index} 
+                                ref={isCursor ? cursorRef : null}
+                                className={`${colorClass} ${cursorClass}`}
+                            >
                                 {char}
                             </span>
                         );
@@ -285,227 +316,69 @@ LEVELS: [
             );
         };
 
-        // --- Main App Component ---
+        // --- View Components (Defined Outside App) ---
 
-        function App() {
-            // -- State --
-            const [view, setView] = useState('home'); // home, game, garden, settings
-            const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
-            
-            // Game State
-            const [inputText, setInputText] = useState("");
-            const [gameState, setGameState] = useState("ready"); // ready, playing, paused, finished
-            const [stats, setStats] = useState({ wpm: 0, accuracy: 100, mistakes: 0, hearts: TEACHER_SETTINGS.STARTING_HEARTS });
-            const [startTime, setStartTime] = useState(null);
-            const [isError, setIsError] = useState(false);
-            
-            // Refs
-            const nextLevelBtnRef = useRef(null);
-
-            // Persistence
-            const [userData, setUserData] = useState(() => {
-                const saved = localStorage.getItem('typingGardenData');
-                return saved ? JSON.parse(saved) : { 
-                    unlockedBadges: [], 
-                    levelsCompleted: 0, 
-                    totalWordsTyped: 0,
-                    gardenPlants: [] // Array of unlocked plant IDs
-                };
-            });
-
-            // -- Effects --
-            useEffect(() => {
-                localStorage.setItem('typingGardenData', JSON.stringify(userData));
-            }, [userData]);
-
-            // Focus next level button when game finishes
-            useEffect(() => {
-                if (gameState === 'finished' && nextLevelBtnRef.current) {
-                    setTimeout(() => nextLevelBtnRef.current.focus(), 100);
-                }
-            }, [gameState]);
-
-            // -- Game Logic --
-            const levelDataIndex = currentLevelIndex % TEACHER_SETTINGS.LEVELS.length;
-            const currentLevelData = TEACHER_SETTINGS.LEVELS[levelDataIndex];
-            const targetText = currentLevelData.text;
-            const isPracticeMode = currentLevelIndex >= TEACHER_SETTINGS.LEVELS.length;
-
-            const handleKeyDown = (e) => {
-                if (view !== 'game' || gameState === 'finished' || gameState === 'paused') return;
-                
-                // Prevent scrolling with Space
-                if (e.key === ' ' && e.target === document.body) {
-                    e.preventDefault(); 
-                }
-
-                // Ignore non-character keys (shift, ctrl, etc)
-                if (e.key.length > 1) return;
-
-                if (gameState === 'ready') {
-                    setGameState('playing');
-                    setStartTime(Date.now());
-                }
-
-                const nextChar = e.key;
-                const currentIndex = inputText.length;
-
-                // Guard against typing past end
-                if (currentIndex >= targetText.length) return;
-
-                const expectedChar = targetText[currentIndex];
-
-                if (nextChar === expectedChar) {
-                    // Correct Input
-                    const nextInput = inputText + nextChar;
-                    setInputText(nextInput);
-                    setIsError(false);
-
-                    // Check for completion
-                    // We can use direct length comparison here because we block incorrect input
-                    if (nextInput.length === targetText.length) {
-                        finishLevel();
-                    }
-                } else {
-                    // Incorrect Input - Block progress but count mistake
-                    setStats(prev => {
-                        const newMistakes = prev.mistakes + 1;
-                        let newHearts = prev.hearts;
-                        
-                        // Heart logic
-                        if (TEACHER_SETTINGS.MISTAKES_PER_HEART > 0 && newMistakes % TEACHER_SETTINGS.MISTAKES_PER_HEART === 0) {
-                            newHearts = Math.max(0, prev.hearts - 1);
-                        }
-                        
-                        return { ...prev, mistakes: newMistakes, hearts: newHearts };
-                    });
+        const HomeView = ({ setView }) => (
+            <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
+                <div className="glass-panel p-12 rounded-[2rem] text-center max-w-2xl w-full">
+                    <div className="mb-6 inline-flex p-4 bg-emerald-100 rounded-full text-emerald-600">
+                        <i className="ph-fill ph-plant text-6xl"></i>
+                    </div>
+                    <h1 className="text-4xl md:text-5xl font-bold text-emerald-900 mb-2">Typing Garden</h1>
+                    <p className="text-stone-500 text-lg mb-8">{TEACHER_SETTINGS.CLASS_NAME}</p>
                     
-                    // Visual feedback
-                    setIsError(true);
-                    setTimeout(() => setIsError(false), 200);
-                }
-            };
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button onClick={() => setView('game')} className="w-full sm:w-auto justify-center">
+                            <i className="ph-bold ph-play"></i> Start Typing
+                        </Button>
+                        <Button variant="secondary" onClick={() => setView('garden')} className="w-full sm:w-auto justify-center">
+                            <i className="ph-bold ph-flower"></i> My Garden
+                        </Button>
+                    </div>
 
-            // Attach/Detach event listener
-            useEffect(() => {
-                window.addEventListener('keydown', handleKeyDown);
-                return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [inputText, gameState, view, currentLevelIndex]); // Added currentLevelIndex to dependencies
-
-            // Timer for WPM
-            useEffect(() => {
-                let interval;
-                if (gameState === 'playing') {
-                    interval = setInterval(() => {
-                        const now = Date.now();
-                        const minutes = (now - startTime) / 60000;
-                        const words = inputText.length / 5;
-                        const wpm = Math.round(words / minutes) || 0;
-                        
-                        setStats(prev => ({ ...prev, wpm }));
-                    }, 1000);
-                }
-                return () => clearInterval(interval);
-            }, [gameState, startTime, inputText]);
-
-
-            const finishLevel = () => {
-                setGameState('finished');
-                
-                // Calculate Final Stats
-                const accuracy = Math.max(0, Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100));
-                
-                // Update persistent data
-                setUserData(prev => {
-                    const newPlants = [...prev.gardenPlants];
-                    newPlants.push(currentLevelIndex);
-
-                    return {
-                        ...prev,
-                        levelsCompleted: prev.levelsCompleted + 1,
-                        totalWordsTyped: prev.totalWordsTyped + (targetText.split(' ').length),
-                        gardenPlants: newPlants
-                    };
-                });
-            };
-
-            const resetLevel = () => {
-                setInputText("");
-                setStats({ wpm: 0, accuracy: 100, mistakes: 0, hearts: TEACHER_SETTINGS.STARTING_HEARTS });
-                setGameState("ready");
-                setStartTime(null);
-                setIsError(false);
-            };
-            
-            const nextLevel = () => {
-                setCurrentLevelIndex(prev => prev + 1);
-                resetLevel();
-            };
-
-            const resetAllProgress = () => {
-                if(confirm("Are you sure you want to reset all garden progress? This cannot be undone.")) {
-                    const cleanState = { 
-                        unlockedBadges: [], 
-                        levelsCompleted: 0, 
-                        totalWordsTyped: 0,
-                        gardenPlants: []
-                    };
-                    setUserData(cleanState);
-                    localStorage.setItem('typingGardenData', JSON.stringify(cleanState));
-                    setView('home');
-                    setCurrentLevelIndex(0);
-                    resetLevel();
-                }
-            };
-
-            // -- Components for Views --
-
-            const HomeView = () => (
-                <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
-                    <div className="glass-panel p-12 rounded-[2rem] text-center max-w-2xl w-full">
-                        <div className="mb-6 inline-flex p-4 bg-emerald-100 rounded-full text-emerald-600">
-                            <i className="ph-fill ph-plant text-6xl"></i>
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold text-emerald-900 mb-2">Typing Garden</h1>
-                        <p className="text-stone-500 text-lg mb-8">{TEACHER_SETTINGS.CLASS_NAME}</p>
-                        
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button onClick={() => setView('game')} className="w-full sm:w-auto justify-center">
-                                <i className="ph-bold ph-play"></i> Start Typing
-                            </Button>
-                            <Button variant="secondary" onClick={() => setView('garden')} className="w-full sm:w-auto justify-center">
-                                <i className="ph-bold ph-flower"></i> My Garden
-                            </Button>
-                        </div>
-
-                        <div className="mt-8 flex justify-center gap-4">
-                            <button onClick={() => setView('about')} className="text-stone-400 hover:text-emerald-600 text-sm font-medium flex items-center gap-1 transition-colors">
-                                <i className="ph-bold ph-info"></i> About
-                            </button>
-                            <button onClick={() => setView('settings')} className="text-stone-400 hover:text-stone-600 text-sm font-medium flex items-center gap-1 transition-colors">
-                                <i className="ph-bold ph-gear"></i> Settings
-                            </button>
-                        </div>
+                    <div className="mt-8 flex justify-center gap-4">
+                        <button onClick={() => setView('about')} className="text-stone-400 hover:text-emerald-600 text-sm font-medium flex items-center gap-1 transition-colors">
+                            <i className="ph-bold ph-info"></i> About
+                        </button>
+                        <button onClick={() => setView('settings')} className="text-stone-400 hover:text-stone-600 text-sm font-medium flex items-center gap-1 transition-colors">
+                            <i className="ph-bold ph-gear"></i> Settings
+                        </button>
                     </div>
                 </div>
-            );
+            </div>
+        );
 
-            const GameView = () => (
-                <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-4 md:p-8">
+        const GameView = ({ 
+            stats, 
+            setView, 
+            currentLevelData, 
+            currentLevelIndex, 
+            isPracticeMode, 
+            inputText, 
+            isError, 
+            gameState, 
+            resetLevel, 
+            nextLevel, 
+            nextLevelBtnRef, 
+            nextChar 
+        }) => {
+            const targetText = currentLevelData.text;
+            return (
+                <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-2 md:p-6">
                     {/* Header Stats */}
-                    <div className="flex justify-between items-center mb-6 glass-panel p-4 rounded-2xl">
+                    <div className="flex justify-between items-center mb-4 glass-panel p-3 rounded-2xl">
                         <Button variant="ghost" onClick={() => setView('home')} className="!p-2">
                             <i className="ph-bold ph-arrow-left text-xl"></i> Back
                         </Button>
                         
-                        <div className="flex gap-6 md:gap-12 text-center">
+                        <div className="flex gap-4 md:gap-12 text-center">
                             <div>
-                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Speed</div>
-                                <div className="text-2xl font-bold text-emerald-700">{stats.wpm} <span className="text-sm font-normal text-stone-500">wpm</span></div>
+                                <div className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-wider">Speed</div>
+                                <div className="text-xl md:text-2xl font-bold text-emerald-700">{stats.wpm} <span className="text-sm font-normal text-stone-500">wpm</span></div>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Accuracy</div>
-                                <div className="text-2xl font-bold text-emerald-700">{Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100) || 100}%</div>
+                                <div className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-wider">Accuracy</div>
+                                <div className="text-xl md:text-2xl font-bold text-emerald-700">{Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100) || 100}%</div>
                             </div>
                             <div className="hidden sm:block">
                                 <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Hearts</div>
@@ -516,19 +389,16 @@ LEVELS: [
                                 </div>
                             </div>
                         </div>
-
-                        <div className="w-10"></div> {/* Spacer for balance */}
+                        <div className="w-10"></div>
                     </div>
 
-                    {/* Main Typing Area */}
-                    <div className="flex-1 flex flex-col justify-center relative">
-                        <div className={`glass-panel p-8 md:p-12 rounded-3xl shadow-lg relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-transform ${isError ? 'animate-shake' : ''}`}>
+                    <div className="flex-1 flex flex-col justify-center relative min-h-0">
+                        <div className={`glass-panel p-6 md:p-8 rounded-3xl shadow-lg relative overflow-hidden flex flex-col justify-center transition-transform ${isError ? 'animate-shake' : ''} mb-4 flex-1`}>
                             
-                            {/* Decorative plant elements */}
-                            <i className="ph-fill ph-plant absolute -bottom-4 -left-4 text-emerald-100/50 text-[180px] -z-10 rotate-12"></i>
-                            <i className="ph-fill ph-flower-tulip absolute top-4 right-4 text-amber-100/50 text-[120px] -z-10 -rotate-12"></i>
+                            <i className="ph-fill ph-plant absolute -bottom-4 -left-4 text-emerald-100/50 text-[120px] -z-10 rotate-12"></i>
+                            <i className="ph-fill ph-flower-tulip absolute top-4 right-4 text-amber-100/50 text-[80px] -z-10 -rotate-12"></i>
 
-                            <div className="mb-6">
+                            <div className="mb-4">
                                 <div className="flex justify-between items-end border-b-2 border-stone-100 pb-2 mb-2">
                                     <div className="flex flex-col">
                                         <h3 className="text-lg font-bold text-stone-500 uppercase tracking-widest">{currentLevelData.title}</h3>
@@ -539,12 +409,18 @@ LEVELS: [
                                 <ProgressBar current={inputText.length} total={targetText.length} />
                             </div>
 
-                            <div className="relative no-select" onClick={() => { document.body.focus() }}>
+                            <div className="relative no-select overflow-y-auto max-h-[30vh]" onClick={() => { document.body.focus() }}>
                                 <RenderedText targetText={targetText} inputText={inputText} isError={isError} />
                             </div>
                         </div>
 
-                        {/* Overlays - Positioned OUTSIDE the typing box to ensure visibility */}
+                        <div className="hidden md:block">
+                            <VirtualKeyboard nextChar={nextChar} />
+                        </div>
+                        <div className="md:hidden text-center text-xs text-stone-400">
+                            Keyboard hidden on small screens
+                        </div>
+
                         {stats.hearts === 0 && (
                             <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
                                 <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center animate-fade-in border border-rose-100 max-w-md w-full text-center">
@@ -590,107 +466,261 @@ LEVELS: [
                             </div>
                         )}
                     </div>
-                    
-                    {/* Instructions footer */}
-                    <div className="mt-6 text-center text-stone-400 text-sm">
-                        Keep your fingers on the home row. Breathe and focus.
-                    </div>
                 </div>
             );
+        };
 
-            // Plant Icon Mapping
-            const PLANT_ICONS = ["ph-flower", "ph-plant", "ph-tree", "ph-leaf", "ph-flower-lotus", "ph-cactus", "ph-potted-plant", "ph-clover"];
-            const PLANT_NAMES = ["Daisy", "Sprout", "Oak Sapling", "Fern", "Lotus", "Cactus", "Basil", "Lucky Clover"];
+        const PLANT_ICONS = ["ph-flower", "ph-plant", "ph-tree", "ph-leaf", "ph-flower-lotus", "ph-cactus", "ph-potted-plant", "ph-clover"];
+        const PLANT_NAMES = ["Daisy", "Sprout", "Oak Sapling", "Fern", "Lotus", "Cactus", "Basil", "Lucky Clover"];
 
-            const GardenView = () => (
-                <div className="h-full flex flex-col p-6 max-w-6xl mx-auto w-full">
-                    <div className="flex justify-between items-center mb-8">
-                        <h2 className="text-3xl font-bold text-emerald-800">My Garden</h2>
-                        <Button variant="secondary" onClick={() => setView('home')}>Back Home</Button>
-                    </div>
+        const GardenView = ({ userData, setView }) => (
+            <div className="h-full flex flex-col p-6 max-w-6xl mx-auto w-full">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-3xl font-bold text-emerald-800">My Garden</h2>
+                    <Button variant="secondary" onClick={() => setView('home')}>Back Home</Button>
+                </div>
 
-                    <div className="flex-1 glass-panel rounded-3xl p-8 relative overflow-hidden bg-gradient-to-b from-blue-50/50 to-emerald-50/50 border-2 border-stone-100 overflow-y-auto">
-                        {/* Sky/Sun decoration */}
-                        <div className="absolute top-8 right-8 w-24 h-24 bg-amber-200 rounded-full blur-2xl opacity-60"></div>
+                <div className="flex-1 glass-panel rounded-3xl p-8 relative overflow-hidden bg-gradient-to-b from-blue-50/50 to-emerald-50/50 border-2 border-stone-100 overflow-y-auto">
+                    <div className="absolute top-8 right-8 w-24 h-24 bg-amber-200 rounded-full blur-2xl opacity-60"></div>
 
-                        {userData.gardenPlants.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
-                                <i className="ph-duotone ph-shovel text-6xl text-stone-300 mb-4"></i>
-                                <p className="text-xl text-stone-500">Your garden is empty.</p>
-                                <p className="text-stone-400">Complete levels to plant seeds!</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 pb-12">
-                                {userData.gardenPlants.map((plantId, index) => {
-                                    // Use modulo to cycle through available icons if user does many levels
-                                    const iconIndex = plantId % PLANT_ICONS.length;
-                                    const icon = PLANT_ICONS[iconIndex];
-                                    const name = PLANT_NAMES[iconIndex];
+                    {userData.gardenPlants.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
+                            <i className="ph-duotone ph-shovel text-6xl text-stone-300 mb-4"></i>
+                            <p className="text-xl text-stone-500">Your garden is empty.</p>
+                            <p className="text-stone-400">Complete levels to plant seeds!</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 pb-12">
+                            {userData.gardenPlants.map((plantId, index) => {
+                                const iconIndex = plantId % PLANT_ICONS.length;
+                                const icon = PLANT_ICONS[iconIndex];
+                                const name = PLANT_NAMES[iconIndex];
 
-                                    return (
-                                        <div key={index} className="flex flex-col items-center gap-2 animate-pop-in group cursor-help">
-                                            <div className="w-24 h-24 bg-white/60 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-300 border border-white relative z-10">
-                                                <i className={`ph-fill ${icon} text-5xl text-emerald-600 drop-shadow-sm`}></i>
-                                            </div>
-                                            <span className="text-sm font-semibold text-stone-600 bg-white/80 px-3 py-1 rounded-full relative z-10 shadow-sm">{name}</span>
+                                return (
+                                    <div key={index} className="flex flex-col items-center gap-2 animate-pop-in group cursor-help">
+                                        <div className="w-24 h-24 bg-white/60 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-300 border border-white relative z-10">
+                                            <i className={`ph-fill ${icon} text-5xl text-emerald-600 drop-shadow-sm`}></i>
                                         </div>
-                                    )
-                                })}
-                            </div>
-                        )}
+                                        <span className="text-sm font-semibold text-stone-600 bg-white/80 px-3 py-1 rounded-full relative z-10 shadow-sm">{name}</span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                    <div className="fixed bottom-0 left-0 right-0 h-12 bg-emerald-100/50 border-t border-emerald-200/50 pointer-events-none"></div>
+                </div>
+            </div>
+        );
 
-                        {/* Ground decoration - Fixed to bottom of container */}
-                        <div className="fixed bottom-0 left-0 right-0 h-12 bg-emerald-100/50 border-t border-emerald-200/50 pointer-events-none"></div>
+        const SettingsModal = ({ setView, resetAllProgress }) => (
+            <Modal title="Settings" onClose={() => setView('home')}>
+                <div className="space-y-6">
+                    <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                        <h4 className="font-bold text-rose-700 mb-2 flex items-center gap-2">
+                            <i className="ph-bold ph-warning"></i> Reset Progress
+                        </h4>
+                        <p className="text-sm text-stone-600 mb-4">
+                            This will erase all badges, garden plants, and stats. This cannot be undone.
+                        </p>
+                        <Button variant="danger" onClick={resetAllProgress} className="w-full justify-center text-sm">
+                            Erase All Data
+                        </Button>
+                    </div>
+                    <div className="text-xs text-stone-400 text-center">
+                        Version 2.0 (Reggio Edition)
                     </div>
                 </div>
-            );
+            </Modal>
+        );
 
-            // -- Modals --
+        const AboutModal = ({ setView }) => (
+            <Modal title="About" onClose={() => setView('home')}>
+                <p className="mb-4">{TEACHER_SETTINGS.ABOUT_TEXT}</p>
+                <div className="bg-emerald-50 p-4 rounded-xl">
+                    <h4 className="font-bold text-emerald-800 text-sm mb-2">How to Play:</h4>
+                    <ul className="text-sm space-y-2 list-disc list-inside">
+                        <li>Type the highlighted letters exactly as shown.</li>
+                        <li>Don't look at your hands! Try to feel the keys.</li>
+                        <li>Follow the color guide on the screen to use the correct fingers.</li>
+                        <li>Accuracy is more important than speed.</li>
+                    </ul>
+                </div>
+            </Modal>
+        );
 
-            const SettingsModal = () => (
-                <Modal title="Settings" onClose={() => setView('home')}>
-                    <div className="space-y-6">
-                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
-                            <h4 className="font-bold text-rose-700 mb-2 flex items-center gap-2">
-                                <i className="ph-bold ph-warning"></i> Reset Progress
-                            </h4>
-                            <p className="text-sm text-stone-600 mb-4">
-                                This will erase all badges, garden plants, and stats. This cannot be undone.
-                            </p>
-                            <Button variant="danger" onClick={resetAllProgress} className="w-full justify-center text-sm">
-                                Erase All Data
-                            </Button>
-                        </div>
-                        <div className="text-xs text-stone-400 text-center">
-                            Version 2.0 (Reggio Edition)
-                        </div>
-                    </div>
-                </Modal>
-            );
+        // --- Main App Component ---
 
-            const AboutModal = () => (
-                <Modal title="About" onClose={() => setView('home')}>
-                    <p className="mb-4">{TEACHER_SETTINGS.ABOUT_TEXT}</p>
-                    <div className="bg-emerald-50 p-4 rounded-xl">
-                        <h4 className="font-bold text-emerald-800 text-sm mb-2">How to Play:</h4>
-                        <ul className="text-sm space-y-2 list-disc list-inside">
-                            <li>Type the highlighted letters exactly as shown.</li>
-                            <li>Don't look at your hands! Try to feel the keys.</li>
-                            <li>Accuracy is more important than speed.</li>
-                            <li>Complete levels to unlock new plants for your garden.</li>
-                        </ul>
-                    </div>
-                </Modal>
-            );
+        function App() {
+            const [view, setView] = useState('home');
+            const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+            
+            const [inputText, setInputText] = useState("");
+            const [gameState, setGameState] = useState("ready");
+            const [stats, setStats] = useState({ wpm: 0, accuracy: 100, mistakes: 0, hearts: TEACHER_SETTINGS.STARTING_HEARTS });
+            const [startTime, setStartTime] = useState(null);
+            const [isError, setIsError] = useState(false);
+            
+            const nextLevelBtnRef = useRef(null);
 
-            // -- Render Logic --
+            const [userData, setUserData] = useState(() => {
+                const saved = localStorage.getItem('typingGardenData');
+                return saved ? JSON.parse(saved) : { 
+                    unlockedBadges: [], 
+                    levelsCompleted: 0, 
+                    totalWordsTyped: 0,
+                    gardenPlants: []
+                };
+            });
+
+            useEffect(() => {
+                localStorage.setItem('typingGardenData', JSON.stringify(userData));
+            }, [userData]);
+
+            useEffect(() => {
+                if (gameState === 'finished' && nextLevelBtnRef.current) {
+                    setTimeout(() => nextLevelBtnRef.current.focus(), 100);
+                }
+            }, [gameState]);
+
+            const levelDataIndex = currentLevelIndex % TEACHER_SETTINGS.LEVELS.length;
+            const currentLevelData = TEACHER_SETTINGS.LEVELS[levelDataIndex];
+            const targetText = currentLevelData.text;
+            const isPracticeMode = currentLevelIndex >= TEACHER_SETTINGS.LEVELS.length;
+
+            const nextChar = inputText.length < targetText.length ? targetText[inputText.length] : null;
+
+            const handleKeyDown = (e) => {
+                if (view !== 'game' || gameState === 'finished' || gameState === 'paused') return;
+                
+                if (e.key === ' ' && e.target === document.body) {
+                    e.preventDefault(); 
+                }
+
+                if (e.key.length > 1) return;
+
+                if (gameState === 'ready') {
+                    setGameState('playing');
+                    setStartTime(Date.now());
+                }
+
+                const nextChar = e.key;
+                const currentIndex = inputText.length;
+
+                if (currentIndex >= targetText.length) return;
+
+                const expectedChar = targetText[currentIndex];
+
+                if (nextChar === expectedChar) {
+                    const nextInput = inputText + nextChar;
+                    setInputText(nextInput);
+                    setIsError(false);
+
+                    if (nextInput.length === targetText.length) {
+                        finishLevel();
+                    }
+                } else {
+                    setStats(prev => {
+                        const newMistakes = prev.mistakes + 1;
+                        let newHearts = prev.hearts;
+                        if (TEACHER_SETTINGS.MISTAKES_PER_HEART > 0 && newMistakes % TEACHER_SETTINGS.MISTAKES_PER_HEART === 0) {
+                            newHearts = Math.max(0, prev.hearts - 1);
+                        }
+                        return { ...prev, mistakes: newMistakes, hearts: newHearts };
+                    });
+                    
+                    setIsError(true);
+                    setTimeout(() => setIsError(false), 200);
+                }
+            };
+
+            useEffect(() => {
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [inputText, gameState, view, currentLevelIndex]);
+
+            useEffect(() => {
+                let interval;
+                if (gameState === 'playing') {
+                    interval = setInterval(() => {
+                        const now = Date.now();
+                        const minutes = (now - startTime) / 60000;
+                        const words = inputText.length / 5;
+                        const wpm = Math.round(words / minutes) || 0;
+                        setStats(prev => ({ ...prev, wpm }));
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [gameState, startTime, inputText]);
+
+            const finishLevel = () => {
+                setGameState('finished');
+                setUserData(prev => {
+                    const newPlants = [...prev.gardenPlants];
+                    newPlants.push(currentLevelIndex);
+                    return {
+                        ...prev,
+                        levelsCompleted: prev.levelsCompleted + 1,
+                        totalWordsTyped: prev.totalWordsTyped + (targetText.split(' ').length),
+                        gardenPlants: newPlants
+                    };
+                });
+            };
+
+            const resetLevel = () => {
+                setInputText("");
+                setStats({ wpm: 0, accuracy: 100, mistakes: 0, hearts: TEACHER_SETTINGS.STARTING_HEARTS });
+                setGameState("ready");
+                setStartTime(null);
+                setIsError(false);
+            };
+            
+            const nextLevel = () => {
+                setCurrentLevelIndex(prev => prev + 1);
+                resetLevel();
+            };
+
+            const resetAllProgress = () => {
+                if(confirm("Are you sure you want to reset all garden progress? This cannot be undone.")) {
+                    const cleanState = { 
+                        unlockedBadges: [], 
+                        levelsCompleted: 0, 
+                        totalWordsTyped: 0,
+                        gardenPlants: []
+                    };
+                    setUserData(cleanState);
+                    localStorage.setItem('typingGardenData', JSON.stringify(cleanState));
+                    setView('home');
+                    setCurrentLevelIndex(0);
+                    resetLevel();
+                }
+            };
+
             return (
                 <div className="h-full w-full">
-                    {view === 'home' && <HomeView />}
-                    {view === 'game' && <GameView />}
-                    {view === 'garden' && <GardenView />}
-                    {view === 'settings' && <SettingsModal />}
-                    {view === 'about' && <AboutModal />}
+                    {view === 'home' && <HomeView setView={setView} />}
+                    
+                    {view === 'game' && (
+                        <GameView 
+                            stats={stats}
+                            setView={setView}
+                            currentLevelData={currentLevelData}
+                            currentLevelIndex={currentLevelIndex}
+                            isPracticeMode={isPracticeMode}
+                            inputText={inputText}
+                            isError={isError}
+                            gameState={gameState}
+                            resetLevel={resetLevel}
+                            nextLevel={nextLevel}
+                            nextLevelBtnRef={nextLevelBtnRef}
+                            nextChar={nextChar}
+                        />
+                    )}
+
+                    {view === 'garden' && <GardenView userData={userData} setView={setView} />}
+                    
+                    {view === 'settings' && <SettingsModal setView={setView} resetAllProgress={resetAllProgress} />}
+                    
+                    {view === 'about' && <AboutModal setView={setView} />}
                 </div>
             );
         }
