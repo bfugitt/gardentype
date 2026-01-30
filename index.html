@@ -79,6 +79,11 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(16, 185, 129, 0.4); 
         }
+
+        /* Rain Drop Animation */
+        .rain-drop {
+            transition: top 0.1s linear;
+        }
     </style>
 </head>
 <body class="text-stone-700 h-screen w-screen overflow-hidden flex flex-col">
@@ -120,11 +125,14 @@
                 { title: "Morning Fog", text: "A thick gray fog hugs the ground, hiding the trees and houses until the sun burns it away." },
                 { title: "Harvest Time", text: "Farmers gather ripe pumpkins and crisp apples as the air turns cool and the days grow shorter." }
             ],
-            ABOUT_TEXT: "Welcome to Typing Garden! This app is designed to help you practice typing while growing your own virtual garden. Focus on accuracy and rhythm. Created for our 4th Grade Class.",
+            // Rain Game Settings
+            RAIN_SPEED: 2, // Speed of falling words
+            RAIN_SPAWN_RATE: 2500, // Milliseconds between new words
+            ABOUT_TEXT: "Welcome to Typing Garden! Practice typing or play the Rain Shower game to water your garden. Focus on accuracy and rhythm.",
             CLASS_NAME: "Mr. Fugitt's Class"
         };
 
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
         // --- Shared Components ---
 
@@ -163,7 +171,7 @@
         );
 
         const ProgressBar = ({ current, total }) => (
-            <div className="w-full bg-stone-200/50 rounded-full h-2 mb-6 overflow-hidden">
+            <div className="w-full bg-stone-200/50 rounded-full h-1.5 md:h-2 mb-4 overflow-hidden">
                 <div 
                     className="bg-emerald-400 h-full transition-all duration-300 ease-out rounded-full"
                     style={{ width: `${Math.min(100, (current / total) * 100)}%` }}
@@ -171,6 +179,7 @@
             </div>
         );
 
+        // --- Keyboard (Compact Version) ---
         const KEYBOARD_LAYOUT = [
             ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "backspace"],
             ["tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\"],
@@ -219,10 +228,10 @@
             const useRightShift = target && leftHandKeys.has(target.key);
 
             return (
-                <div className="w-full max-w-4xl mx-auto p-2 md:p-4 glass-panel rounded-2xl mt-4 select-none transform scale-95 md:scale-100 origin-top">
-                    <div className="flex flex-col gap-1.5 md:gap-2">
+                <div className="w-full max-w-3xl mx-auto p-1.5 glass-panel rounded-xl mt-2 select-none">
+                    <div className="flex flex-col gap-1">
                         {KEYBOARD_LAYOUT.map((row, rowIndex) => (
-                            <div key={rowIndex} className="flex justify-center gap-1 md:gap-1.5">
+                            <div key={rowIndex} className="flex justify-center gap-0.5 md:gap-1">
                                 {row.map((key) => {
                                     let isActive = false;
                                     if (target) {
@@ -233,19 +242,23 @@
                                         }
                                         if (key === 'space' && nextChar === ' ') isActive = true;
                                     }
-                                    let widthClass = "w-8 md:w-12";
-                                    if (key === 'backspace') widthClass = "w-16 md:w-24";
-                                    if (key === 'tab' || key === '\\') widthClass = "w-12 md:w-16";
-                                    if (key === 'caps' || key === 'enter') widthClass = "w-14 md:w-20";
-                                    if (key === 'shift') widthClass = "w-20 md:w-24";
-                                    if (key === 'space') widthClass = "w-64 md:w-80";
+                                    
+                                    // Much smaller sizing for Chromebooks
+                                    let widthClass = "w-6 md:w-9";
+                                    if (key === 'backspace') widthClass = "w-12 md:w-16";
+                                    if (key === 'tab' || key === '\\') widthClass = "w-10 md:w-14";
+                                    if (key === 'caps' || key === 'enter') widthClass = "w-11 md:w-14";
+                                    if (key === 'shift') widthClass = "w-14 md:w-20";
+                                    if (key === 'space') widthClass = "w-40 md:w-60";
+                                    
                                     const fingerBorder = getFingerColor(key);
                                     
                                     return (
                                         <div 
                                             key={key}
                                             className={`
-                                                h-8 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl text-sm md:text-base font-medium transition-all duration-200 shadow-sm border-b-4
+                                                h-6 md:h-9 flex items-center justify-center rounded md:rounded-lg 
+                                                text-[10px] md:text-sm font-medium transition-all duration-200 shadow-sm border-b-2
                                                 ${widthClass}
                                                 ${isActive 
                                                     ? 'bg-emerald-500 text-white border-emerald-700 -translate-y-0.5 shadow-md' 
@@ -285,7 +298,7 @@
             }, [inputText.length]);
 
             return (
-                <div className="font-mono text-2xl md:text-3xl leading-relaxed tracking-wide text-stone-400 break-words whitespace-pre-wrap">
+                <div className="font-mono text-xl md:text-3xl leading-relaxed tracking-wide text-stone-400 break-words whitespace-pre-wrap">
                     {targetText.split('').map((char, index) => {
                         let colorClass = "text-stone-300/60";
                         let cursorClass = "";
@@ -316,20 +329,238 @@
             );
         };
 
+        // --- Rain Game Components ---
+        
+        const RainGameView = ({ setView }) => {
+            const [drops, setDrops] = useState([]);
+            const [activeWordId, setActiveWordId] = useState(null); // ID of word currently being typed
+            const [typedPart, setTypedPart] = useState("");
+            const [score, setScore] = useState(0);
+            const [missed, setMissed] = useState(0);
+            const [gameState, setGameState] = useState('playing'); // playing, gameover
+            
+            const containerRef = useRef(null);
+            const lastSpawnTime = useRef(0);
+            const requestRef = useRef();
+
+            // Word pool extraction
+            const wordPool = useMemo(() => {
+                const words = [];
+                TEACHER_SETTINGS.LEVELS.forEach(level => {
+                    const clean = level.text.replace(/[^\w\s]|_/g, "").replace(/\s+/g, " ");
+                    clean.split(' ').forEach(w => {
+                        if(w.length > 2) words.push(w);
+                    });
+                });
+                return [...new Set(words)]; // distinct
+            }, []);
+
+            // Game Loop
+            const updateGame = useCallback((time) => {
+                if (gameState !== 'playing') return;
+
+                // Spawn logic
+                if (time - lastSpawnTime.current > TEACHER_SETTINGS.RAIN_SPAWN_RATE) {
+                    const word = wordPool[Math.floor(Math.random() * wordPool.length)];
+                    const id = Date.now();
+                    const x = Math.random() * 80 + 10; // 10% to 90% width
+                    
+                    setDrops(prev => [...prev, { id, text: word, x, y: -10 }]);
+                    lastSpawnTime.current = time;
+                }
+
+                // Move drops & Check collisions
+                setDrops(prev => {
+                    const nextDrops = [];
+                    let newMissed = 0;
+                    
+                    prev.forEach(drop => {
+                        const nextY = drop.y + (TEACHER_SETTINGS.RAIN_SPEED * 0.1); // Speed factor
+                        if (nextY > 100) {
+                            newMissed++;
+                            // Reset active if the active word dropped off screen
+                            setActiveWordId(currentId => currentId === drop.id ? null : currentId);
+                            setTypedPart(current => activeWordId === drop.id ? "" : current);
+                        } else {
+                            nextDrops.push({ ...drop, y: nextY });
+                        }
+                    });
+
+                    if (newMissed > 0) {
+                        setMissed(m => {
+                            const nextM = m + newMissed;
+                            if (nextM >= 10) setGameState('gameover');
+                            return nextM;
+                        });
+                    }
+                    
+                    return nextDrops;
+                });
+
+                requestRef.current = requestAnimationFrame(updateGame);
+            }, [gameState, wordPool, activeWordId]);
+
+            useEffect(() => {
+                requestRef.current = requestAnimationFrame(updateGame);
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [updateGame]);
+
+            // Input Handler
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (gameState !== 'playing') return;
+                    if (e.key.length > 1 && e.key !== 'Backspace') return;
+
+                    // If we have an active word
+                    if (activeWordId) {
+                        const activeDrop = drops.find(d => d.id === activeWordId);
+                        if (!activeDrop) {
+                            // Active word disappeared? Reset
+                            setActiveWordId(null);
+                            setTypedPart("");
+                            return;
+                        }
+
+                        const nextCharNeeded = activeDrop.text[typedPart.length];
+                        if (e.key === nextCharNeeded) {
+                            const nextTyped = typedPart + e.key;
+                            setTypedPart(nextTyped);
+                            
+                            // Word complete?
+                            if (nextTyped === activeDrop.text) {
+                                setScore(s => s + 1);
+                                setDrops(prev => prev.filter(d => d.id !== activeWordId));
+                                setActiveWordId(null);
+                                setTypedPart("");
+                            }
+                        }
+                    } else {
+                        // Try to find a new target
+                        // Find drops that start with this key
+                        // Sort by Y (lowest first/closest to danger)
+                        const candidates = drops.filter(d => d.text.startsWith(e.key)).sort((a, b) => b.y - a.y);
+                        
+                        if (candidates.length > 0) {
+                            const target = candidates[0];
+                            setActiveWordId(target.id);
+                            setTypedPart(e.key);
+                            
+                            // If single letter word (unlikely but possible)
+                            if (target.text.length === 1) {
+                                setScore(s => s + 1);
+                                setDrops(prev => prev.filter(d => d.id !== target.id));
+                                setActiveWordId(null);
+                                setTypedPart("");
+                            }
+                        }
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [drops, activeWordId, typedPart, gameState]);
+
+            return (
+                <div className="h-full w-full relative overflow-hidden bg-gradient-to-b from-sky-100 to-emerald-50">
+                    {/* Header */}
+                    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20">
+                        <Button variant="ghost" onClick={() => setView('home')} className="!p-2 bg-white/50 backdrop-blur">
+                            <i className="ph-bold ph-arrow-left"></i>
+                        </Button>
+                        <div className="flex gap-4">
+                            <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-full font-bold text-emerald-700 shadow-sm">
+                                Score: {score}
+                            </div>
+                            <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-full font-bold text-rose-500 shadow-sm">
+                                Missed: {missed}/10
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Rain Area */}
+                    <div ref={containerRef} className="absolute inset-0 z-10">
+                        {drops.map(drop => {
+                            const isActive = drop.id === activeWordId;
+                            const isMatched = isActive ? drop.text.substring(0, typedPart.length) : "";
+                            const remainder = isActive ? drop.text.substring(typedPart.length) : drop.text;
+
+                            return (
+                                <div 
+                                    key={drop.id}
+                                    className={`absolute px-3 py-1.5 rounded-full font-mono font-bold text-lg shadow-sm transition-transform
+                                        ${isActive ? 'bg-emerald-500 text-white scale-110 z-20' : 'bg-white/80 text-sky-700 border border-sky-200'}
+                                    `}
+                                    style={{ 
+                                        left: `${drop.x}%`, 
+                                        top: `${drop.y}%`,
+                                        transform: 'translateX(-50%)'
+                                    }}
+                                >
+                                    {isActive ? (
+                                        <>
+                                            <span className="text-emerald-100">{isMatched}</span>
+                                            <span>{remainder}</span>
+                                        </>
+                                    ) : (
+                                        drop.text
+                                    )}
+                                    {/* Droplet Icon */}
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-sky-400 opacity-50">
+                                        <i className="ph-fill ph-drop text-xl"></i>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Ground */}
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-emerald-600 z-10 flex items-end justify-center pb-4">
+                         <div className="text-emerald-100 font-bold opacity-50">Keep the garden watered!</div>
+                    </div>
+
+                    {/* Game Over Overlay */}
+                    {gameState === 'gameover' && (
+                        <div className="absolute inset-0 z-50 bg-stone-900/40 backdrop-blur flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-8 text-center animate-pop-in max-w-sm w-full">
+                                <i className="ph-fill ph-cloud-rain text-6xl text-sky-400 mb-4"></i>
+                                <h2 className="text-3xl font-bold text-stone-800 mb-2">Rain Stopped</h2>
+                                <p className="text-stone-500 mb-6">You collected {score} words!</p>
+                                <div className="flex gap-2 justify-center">
+                                    <Button variant="secondary" onClick={() => setView('home')}>Home</Button>
+                                    <Button onClick={() => {
+                                        setDrops([]);
+                                        setScore(0);
+                                        setMissed(0);
+                                        setGameState('playing');
+                                        setActiveWordId(null);
+                                        setTypedPart("");
+                                    }}>Play Again</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
+        };
+
+
         // --- View Components ---
 
         const HomeView = ({ setView, startGame }) => (
             <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
-                <div className="glass-panel p-12 rounded-[2rem] text-center max-w-2xl w-full">
+                <div className="glass-panel p-8 md:p-12 rounded-[2rem] text-center max-w-2xl w-full">
                     <div className="mb-6 inline-flex p-4 bg-emerald-100 rounded-full text-emerald-600">
-                        <i className="ph-fill ph-plant text-6xl"></i>
+                        <i className="ph-fill ph-plant text-5xl md:text-6xl"></i>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-bold text-emerald-900 mb-2">Typing Garden</h1>
-                    <p className="text-stone-500 text-lg mb-8">{TEACHER_SETTINGS.CLASS_NAME}</p>
+                    <h1 className="text-3xl md:text-5xl font-bold text-emerald-900 mb-2">Typing Garden</h1>
+                    <p className="text-stone-500 text-base md:text-lg mb-8">{TEACHER_SETTINGS.CLASS_NAME}</p>
                     
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
                         <Button onClick={startGame} className="w-full sm:w-auto justify-center">
                             <i className="ph-bold ph-play"></i> Start Typing
+                        </Button>
+                        <Button variant="secondary" onClick={() => setView('rain')} className="w-full sm:w-auto justify-center bg-sky-100 text-sky-700 hover:bg-sky-200">
+                            <i className="ph-bold ph-cloud-rain"></i> Rain Shower
                         </Button>
                         <Button variant="secondary" onClick={() => setView('garden')} className="w-full sm:w-auto justify-center">
                             <i className="ph-bold ph-flower"></i> My Garden
@@ -364,25 +595,25 @@
         }) => {
             const targetText = currentLevelData.text;
             return (
-                <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-2 md:p-6">
-                    {/* Header Stats */}
-                    <div className="flex justify-between items-center mb-4 glass-panel p-3 rounded-2xl">
-                        <Button variant="ghost" onClick={() => setView('home')} className="!p-2">
-                            <i className="ph-bold ph-arrow-left text-xl"></i> Back
+                <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-2">
+                    {/* Header Stats - Compact */}
+                    <div className="flex justify-between items-center mb-2 glass-panel p-2 rounded-xl">
+                        <Button variant="ghost" onClick={() => setView('home')} className="!p-1.5 text-sm">
+                            <i className="ph-bold ph-arrow-left text-lg"></i> Back
                         </Button>
                         
-                        <div className="flex gap-4 md:gap-12 text-center">
+                        <div className="flex gap-4 md:gap-8 text-center">
                             <div>
-                                <div className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-wider">Speed</div>
-                                <div className="text-xl md:text-2xl font-bold text-emerald-700">{stats.wpm} <span className="text-sm font-normal text-stone-500">wpm</span></div>
+                                <div className="text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-wider">Speed</div>
+                                <div className="text-lg md:text-xl font-bold text-emerald-700">{stats.wpm} <span className="text-xs font-normal text-stone-500">wpm</span></div>
                             </div>
                             <div>
-                                <div className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-wider">Accuracy</div>
-                                <div className="text-xl md:text-2xl font-bold text-emerald-700">{Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100) || 100}%</div>
+                                <div className="text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-wider">Accuracy</div>
+                                <div className="text-lg md:text-xl font-bold text-emerald-700">{Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100) || 100}%</div>
                             </div>
                             <div className="hidden sm:block">
-                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Hearts</div>
-                                <div className="flex gap-1 mt-1 text-rose-500 text-xl">
+                                <div className="text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-wider">Hearts</div>
+                                <div className="flex gap-0.5 mt-0.5 text-rose-500 text-lg">
                                     {[...Array(TEACHER_SETTINGS.STARTING_HEARTS)].map((_, i) => (
                                         <i key={i} className={`ph-fill ${i < stats.hearts ? 'ph-heart' : 'ph-heart-break text-stone-300'}`}></i>
                                     ))}
@@ -392,35 +623,35 @@
                         <div className="w-10"></div>
                     </div>
 
+                    {/* Main Content Area */}
                     <div className="flex-1 flex flex-col justify-center relative min-h-0">
-                        <div className={`glass-panel p-6 md:p-8 rounded-3xl shadow-lg relative overflow-hidden flex flex-col justify-center transition-transform ${isError ? 'animate-shake' : ''} mb-4 flex-1`}>
+                        <div className={`glass-panel p-4 md:p-8 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center transition-transform ${isError ? 'animate-shake' : ''} mb-2 flex-1`}>
                             
-                            <i className="ph-fill ph-plant absolute -bottom-4 -left-4 text-emerald-100/50 text-[120px] -z-10 rotate-12"></i>
-                            <i className="ph-fill ph-flower-tulip absolute top-4 right-4 text-amber-100/50 text-[80px] -z-10 -rotate-12"></i>
+                            <i className="ph-fill ph-plant absolute -bottom-4 -left-4 text-emerald-100/50 text-[80px] md:text-[120px] -z-10 rotate-12"></i>
+                            <i className="ph-fill ph-flower-tulip absolute top-4 right-4 text-amber-100/50 text-[60px] md:text-[80px] -z-10 -rotate-12"></i>
 
-                            <div className="mb-4">
-                                <div className="flex justify-between items-end border-b-2 border-stone-100 pb-2 mb-2">
+                            <div className="mb-2">
+                                <div className="flex justify-between items-end border-b border-stone-100 pb-1 mb-2">
                                     <div className="flex flex-col">
-                                        <h3 className="text-lg font-bold text-stone-500 uppercase tracking-widest">{currentLevelData.title}</h3>
-                                        {isPracticeMode && <span className="text-xs text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded-full w-fit mt-1">Practice Mode</span>}
+                                        <h3 className="text-sm md:text-lg font-bold text-stone-500 uppercase tracking-widest truncate max-w-[200px]">{currentLevelData.title}</h3>
+                                        {isPracticeMode && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-100 px-1.5 py-0.5 rounded-full w-fit">Practice</span>}
                                     </div>
-                                    <div className="text-sm text-stone-400">Level {currentLevelIndex + 1}</div>
+                                    <div className="text-xs text-stone-400">Level {currentLevelIndex + 1}</div>
                                 </div>
                                 <ProgressBar current={inputText.length} total={targetText.length} />
                             </div>
 
-                            <div className="relative no-select overflow-y-auto max-h-[30vh]" onClick={() => { document.body.focus() }}>
+                            <div className="relative no-select overflow-y-auto max-h-[40vh] md:max-h-[30vh]" onClick={() => { document.body.focus() }}>
                                 <RenderedText targetText={targetText} inputText={inputText} isError={isError} />
                             </div>
                         </div>
 
+                        {/* Keyboard Component */}
                         <div className="hidden md:block">
                             <VirtualKeyboard nextChar={nextChar} />
                         </div>
-                        <div className="md:hidden text-center text-xs text-stone-400">
-                            Keyboard hidden on small screens
-                        </div>
-
+                        
+                        {/* Overlays */}
                         {stats.hearts === 0 && (
                             <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
                                 <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center animate-fade-in border border-rose-100 max-w-md w-full text-center">
@@ -472,7 +703,6 @@
 
         const PLANT_ICONS = ["ph-flower", "ph-plant", "ph-tree", "ph-leaf", "ph-flower-lotus", "ph-cactus", "ph-potted-plant", "ph-clover"];
         
-        // Removed fixed names, now we use the Level Title
         const GardenView = ({ userData, setView, replayLevel }) => (
             <div className="h-full flex flex-col p-6 max-w-6xl mx-auto w-full">
                 <div className="flex justify-between items-center mb-8">
@@ -492,7 +722,6 @@
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 pb-12">
                             {userData.gardenPlants.map((plant, index) => {
-                                // plant is now an object: { id, title, wpm, accuracy }
                                 const iconIndex = plant.id % PLANT_ICONS.length;
                                 const icon = PLANT_ICONS[iconIndex];
 
@@ -505,7 +734,6 @@
                                     >
                                         <div className="w-24 h-24 bg-white/60 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-300 border border-white relative z-10 group-hover:shadow-md">
                                             <i className={`ph-fill ${icon} text-5xl text-emerald-600 drop-shadow-sm`}></i>
-                                            {/* Hover Play Icon */}
                                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-full">
                                                 <i className="ph-fill ph-play text-white text-3xl"></i>
                                             </div>
@@ -543,7 +771,7 @@
                         </Button>
                     </div>
                     <div className="text-xs text-stone-400 text-center">
-                        Version 2.1 (Random & Replay)
+                        Version 2.2 (Rain Shower)
                     </div>
                 </div>
             </Modal>
@@ -553,12 +781,12 @@
             <Modal title="About" onClose={() => setView('home')}>
                 <p className="mb-4">{TEACHER_SETTINGS.ABOUT_TEXT}</p>
                 <div className="bg-emerald-50 p-4 rounded-xl">
-                    <h4 className="font-bold text-emerald-800 text-sm mb-2">How to Play:</h4>
+                    <h4 className="font-bold text-emerald-800 text-sm mb-2">Rain Shower Mode:</h4>
                     <ul className="text-sm space-y-2 list-disc list-inside">
-                        <li>Type the highlighted letters exactly as shown.</li>
-                        <li>Don't look at your hands! Try to feel the keys.</li>
-                        <li>Follow the color guide on the screen to use the correct fingers.</li>
-                        <li>Accuracy is more important than speed.</li>
+                        <li>Words will fall from the sky!</li>
+                        <li>Type the <b>first letter</b> of a word to target it.</li>
+                        <li>Finish typing the word before it hits the bottom.</li>
+                        <li>Don't let too many words fall!</li>
                     </ul>
                 </div>
             </Modal>
@@ -577,8 +805,6 @@
             const [isError, setIsError] = useState(false);
             
             const nextLevelBtnRef = useRef(null);
-            
-            // New Ref to track input text independently of the timer interval
             const inputTextRef = useRef("");
 
             const [userData, setUserData] = useState(() => {
@@ -586,9 +812,8 @@
                 let parsed;
                 try {
                     parsed = saved ? JSON.parse(saved) : null;
-                    // Migration check: If gardenPlants contains numbers (old format), reset to avoid crash
                     if (parsed && parsed.gardenPlants && parsed.gardenPlants.length > 0 && typeof parsed.gardenPlants[0] === 'number') {
-                        parsed = null; // Force reset
+                        parsed = null;
                     }
                 } catch (e) {
                     parsed = null;
@@ -598,7 +823,7 @@
                     unlockedBadges: [], 
                     levelsCompleted: 0, 
                     totalWordsTyped: 0,
-                    gardenPlants: [] // Now Array of Objects {id, title, wpm, accuracy}
+                    gardenPlants: []
                 };
             });
 
@@ -606,7 +831,6 @@
                 localStorage.setItem('typingGardenData', JSON.stringify(userData));
             }, [userData]);
 
-            // Sync the ref with the state whenever inputText changes
             useEffect(() => {
                 inputTextRef.current = inputText;
             }, [inputText]);
@@ -673,14 +897,12 @@
                 return () => window.removeEventListener('keydown', handleKeyDown);
             }, [inputText, gameState, view, currentLevelIndex]);
 
-            // UPDATED: Timer Effect now uses Ref and is independent of inputText state
             useEffect(() => {
                 let interval;
                 if (gameState === 'playing' && startTime) {
                     interval = setInterval(() => {
                         const now = Date.now();
                         const minutes = (now - startTime) / 60000;
-                        // Access current length from Ref instead of State to avoid dependency loop or stale closure
                         const words = inputTextRef.current.length / 5;
                         const wpm = Math.round(words / minutes) || 0;
                         
@@ -693,22 +915,17 @@
             const finishLevel = () => {
                 setGameState('finished');
                 
-                // Calculate Final Stats
                 const finalAccuracy = Math.max(0, Math.round(((targetText.length - stats.mistakes) / targetText.length) * 100));
                 
-                // Need to calculate final WPM here to ensure it's accurate at finish
                 const now = Date.now();
                 const minutes = (now - startTime) / 60000;
                 const words = targetText.length / 5;
                 const finalWpm = Math.round(words / minutes) || 0;
                 
-                // Update final stats for display
                 setStats(prev => ({ ...prev, wpm: finalWpm, accuracy: finalAccuracy }));
 
                 setUserData(prev => {
                     const newPlants = [...prev.gardenPlants];
-                    
-                    // Check if this level already exists in the garden
                     const existingIndex = newPlants.findIndex(p => p.id === currentLevelIndex);
                     
                     const newPlantEntry = {
@@ -719,10 +936,8 @@
                     };
 
                     if (existingIndex >= 0) {
-                        // Update existing plant only if WPM is better (or just update to latest? User asked to "update score", usually implies latest or best. Let's do latest to reflect current skill)
                         newPlants[existingIndex] = newPlantEntry;
                     } else {
-                        // Add new plant
                         newPlants.push(newPlantEntry);
                     }
 
@@ -748,7 +963,6 @@
                 resetLevel();
             };
 
-            // New function to start a random game
             const startRandomGame = () => {
                 const randomIdx = Math.floor(Math.random() * TEACHER_SETTINGS.LEVELS.length);
                 setCurrentLevelIndex(randomIdx);
@@ -756,7 +970,6 @@
                 setView('game');
             };
 
-            // New function to replay from garden
             const replayLevel = (levelId) => {
                 setCurrentLevelIndex(levelId);
                 resetLevel();
@@ -800,6 +1013,8 @@
                         />
                     )}
 
+                    {view === 'rain' && <RainGameView setView={setView} />}
+
                     {view === 'garden' && <GardenView userData={userData} setView={setView} replayLevel={replayLevel} />}
                     
                     {view === 'settings' && <SettingsModal setView={setView} resetAllProgress={resetAllProgress} />}
@@ -813,24 +1028,5 @@
         root.render(<App />);
 
     </script>
-
-    <!-- Global Styles for Animations -->
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.5); }
-            70% { transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-        .animate-pop-in {
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-    </style>
 </body>
 </html>
